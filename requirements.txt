@@ -1,0 +1,4 @@
+Flask
+redis
+json5
+gunicorn

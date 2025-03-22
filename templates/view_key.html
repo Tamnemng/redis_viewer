@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis Key Data - {{ key }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Danh sách keys</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ key }}</li>
+            </ol>
+        </nav>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4>Key: <code>{{ key }}</code></h4>
+                <div>
+                    <span class="badge bg-primary">{{ data.type }}</span>
+                    <button type="button" class="btn btn-sm btn-danger ms-2" data-bs-toggle="modal" 
+                            data-bs-target="#deleteKeyModal" data-key="{{ key }}">
+                        Delete Key
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if data.type.startswith('string') and data.type != 'string (Array)' %}
+                    {% if data.type == 'string (JSON)' and data.value is mapping %}
+                        <pre><code class="json">{{ data.value|tojson(indent=2) }}</code></pre>
+                    {% else %}
+                        <div class="alert alert-secondary">{{ data.value }}</div>
+                    {% endif %}
+                
+                {% elif data.type == 'string (Array)' %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i, val in enumerate(data.value) %}
+                            <tr>
+                                <td>{{ i }}</td>
+                                <td>{{ val }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                                            data-index="{{ i }}" data-value="{{ val }}">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                {% elif data.type == 'hash' %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for field, val in data.value.items() %}
+                            <tr>
+                                <td><code>{{ field }}</code></td>
+                                <td>{{ val }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                                            data-field="{{ field }}">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                {% elif data.type == 'list' %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i, val in enumerate(data.value) %}
+                            <tr>
+                                <td>{{ i }}</td>
+                                <td>{{ val }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                                            data-value="{{ val }}">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                {% elif data.type == 'set' %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for val in data.value %}
+                            <tr>
+                                <td>{{ val }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                                            data-value="{{ val }}">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                {% elif data.type == 'zset' %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Value</th>
+                                <th>Score</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for val, score in data.value.items() %}
+                            <tr>
+                                <td>{{ val }}</td>
+                                <td>{{ score }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
+                                            data-value="{{ val }}">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                {% else %}
+                    <div class="alert alert-warning">{{ data.value }}</div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-muted">
+                <a href="/" class="btn btn-primary">Quay lại</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Key Modal -->
+    <div class="modal fade" id="deleteKeyModal" tabindex="-1" aria-labelledby="deleteKeyModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteKeyModalLabel">Xác nhận xóa key</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Bạn có chắc chắn muốn xóa key <strong>{{ key }}</strong>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <form action="/delete/{{ key }}" method="POST">
+                        <button type="submit" class="btn btn-danger">Xóa</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Item Modal -->
+    <div class="modal fade" id="deleteItemModal" tabindex="-1" aria-labelledby="deleteItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteItemModalLabel">Xác nhận xóa item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Bạn có chắc chắn muốn xóa item này?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <form id="deleteItemForm" action="/delete_item/{{ key }}" method="POST">
+                        <input type="hidden" id="itemIndex" name="index">
+                        <input type="hidden" id="itemValue" name="value">
+                        <input type="hidden" id="itemField" name="field">
+                        <button type="submit" class="btn btn-danger">Xóa</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            // Delete item modal
+            $('#deleteItemModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget);
+                var index = button.data('index');
+                var value = button.data('value');
+                var field = button.data('field');
+                
+                var form = $('#deleteItemForm');
+                
+                if (index !== undefined) {
+                    $('#itemIndex').val(index);
+                }
+                
+                if (value !== undefined) {
+                    $('#itemValue').val(value);
+                }
+                
+                if (field !== undefined) {
+                    $('#itemField').val(field);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
