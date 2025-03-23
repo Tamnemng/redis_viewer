@@ -80,37 +80,87 @@ def view_key(key):
         return redirect(url_for('index'))
     
     key_type = r.type(key)
-    key_data = {}
+    
+    template_data = {
+        'key': key,
+        'data_type': key_type,
+        'raw_data': None,
+        'json_data': None,  # New field for JSON data
+        'is_json_array': False  # Flag to indicate if data is a JSON array
+    }
     
     if key_type == "string":
+        value = r.get(key)
+        template_data['raw_data'] = value
+        
+        # Try to parse as JSON
         try:
-            value = r.get(key)
-            parsed_value = json.loads(value) if value else value
-            if isinstance(parsed_value, dict):
-                key_data = {"value": parsed_value, "type": "string (JSON)"}
-            elif isinstance(parsed_value, list):
-                key_data = {"value": parsed_value, "type": "string (Array)"}
-            else:
-                key_data = {"value": parsed_value, "type": "string"}
-        except json.JSONDecodeError:
-            key_data = {"value": value, "type": "string"}
-    
+            parsed_data = json.loads(value)
+            if isinstance(parsed_data, dict) and 'data' in parsed_data:
+                try:
+                    json_data = json.loads(parsed_data['data'])
+                    if isinstance(json_data, list):
+                        template_data['json_data'] = json_data
+                        template_data['is_json_array'] = True
+                    else:
+                        template_data['raw_data'] = json.dumps(json_data, indent=2)
+                except:
+                    template_data['raw_data'] = parsed_data['data']
+        except:
+            pass
+        
     elif key_type == "hash":
-        key_data = {"value": r.hgetall(key), "type": "hash"}
-    
+        hash_data = r.hgetall(key)
+        template_data['hash_data'] = hash_data
+        
+        # If hash has 'data' field, extract and display it
+        if 'data' in hash_data:
+            data_content = hash_data['data']
+            try:
+                # Try to parse as JSON
+                json_data = json.loads(data_content)
+                if isinstance(json_data, list):
+                    # If it's a JSON array, pass it for table rendering
+                    template_data['json_data'] = json_data
+                    template_data['is_json_array'] = True
+                    template_data['raw_data'] = data_content  # Keep raw data for toggle
+                else:
+                    # If it's not an array, just display formatted JSON
+                    template_data['raw_data'] = json.dumps(json_data, indent=2)
+            except json.JSONDecodeError:
+                # If not JSON, keep as is
+                template_data['raw_data'] = data_content
+        else:
+            template_data['raw_data'] = str(hash_data)
+        
     elif key_type == "list":
-        key_data = {"value": r.lrange(key, 0, -1), "type": "list"}
-    
+        list_data = r.lrange(key, 0, -1)
+        template_data['list_data'] = list_data
+        template_data['raw_data'] = str(list_data)
+        
+        # Check if all list items are valid JSON
+        try:
+            json_items = [json.loads(item) for item in list_data]
+            if all(isinstance(item, dict) for item in json_items):
+                template_data['json_data'] = json_items
+                template_data['is_json_array'] = True
+        except:
+            pass
+        
     elif key_type == "set":
-        key_data = {"value": list(r.smembers(key)), "type": "set"}
-    
+        set_data = list(r.smembers(key))
+        template_data['set_data'] = set_data
+        template_data['raw_data'] = str(set_data)
+        
     elif key_type == "zset":
-        key_data = {"value": dict(r.zrange(key, 0, -1, withscores=True)), "type": "zset"}
-    
+        zset_data = dict(r.zrange(key, 0, -1, withscores=True))
+        template_data['zset_data'] = zset_data
+        template_data['raw_data'] = str(zset_data)
+        
     else:
-        key_data = {"value": "Unsupported type", "type": key_type}
+        template_data['raw_data'] = f"Unsupported type: {key_type}"
     
-    return render_template("view_key.html", key=key, data=key_data)
+    return render_template("view_key.html", **template_data)
 
 @app.route("/delete/<path:key>", methods=["POST"])
 def delete_key(key):

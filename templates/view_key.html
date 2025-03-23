@@ -1,259 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Redis Key Data - {{ key }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-<body>
-    <div class="container mt-4">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/">Danh sách keys</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ key }}</li>
-            </ol>
-        </nav>
+    <style>
+      .table-responsive {
+        overflow-x: auto;
+      }
+      .nested-json {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .nested-json:hover {
+        white-space: normal;
+        overflow: visible;
+      }
+      .timestamp {
+        min-width: 180px;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .json-table th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 1;
+      }
+      .json-table td {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .json-table td:hover {
+        white-space: normal;
+        overflow: visible;
+      }
+      .view-mode-controls {
+        margin-bottom: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid mt-4">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Danh sách keys</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ key }}</li>
+        </ol>
+      </nav>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ category }} alert-dismissible fade show"
+        role="alert"
+      >
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
 
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4>Key: <code>{{ key }}</code></h4>
-                <div>
-                    <span class="badge bg-primary">{{ data.type }}</span>
-                    <button type="button" class="btn btn-sm btn-danger ms-2" data-bs-toggle="modal" 
-                            data-bs-target="#deleteKeyModal" data-key="{{ key }}">
-                        Delete Key
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                {% if data.type.startswith('string') and data.type != 'string (Array)' %}
-                    {% if data.type == 'string (JSON)' and data.value is mapping %}
-                        <pre><code class="json">{{ data.value|tojson(indent=2) }}</code></pre>
-                    {% else %}
-                        <div class="alert alert-secondary">{{ data.value }}</div>
-                    {% endif %}
-                
-                {% elif data.type == 'string (Array)' %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Index</th>
-                                <th>Value</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for i, val in enumerate(data.value) %}
-                            <tr>
-                                <td>{{ i }}</td>
-                                <td>{{ val }}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                                            data-index="{{ i }}" data-value="{{ val }}">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-                {% elif data.type == 'hash' %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Field</th>
-                                <th>Value</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for field, val in data.value.items() %}
-                            <tr>
-                                <td><code>{{ field }}</code></td>
-                                <td>{{ val }}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                                            data-field="{{ field }}">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-                {% elif data.type == 'list' %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Index</th>
-                                <th>Value</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for i, val in enumerate(data.value) %}
-                            <tr>
-                                <td>{{ i }}</td>
-                                <td>{{ val }}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                                            data-value="{{ val }}">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-                {% elif data.type == 'set' %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Value</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for val in data.value %}
-                            <tr>
-                                <td>{{ val }}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                                            data-value="{{ val }}">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-                {% elif data.type == 'zset' %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Value</th>
-                                <th>Score</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for val, score in data.value.items() %}
-                            <tr>
-                                <td>{{ val }}</td>
-                                <td>{{ score }}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            data-bs-toggle="modal" data-bs-target="#deleteItemModal"
-                                            data-value="{{ val }}">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-                {% else %}
-                    <div class="alert alert-warning">{{ data.value }}</div>
-                {% endif %}
-            </div>
-            <div class="card-footer text-muted">
-                <a href="/" class="btn btn-primary">Quay lại</a>
-            </div>
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <h4>Key: <code>{{ key }}</code></h4>
+          <div>
+            <span class="badge bg-primary">{{ data_type }}</span>
+            <button
+              type="button"
+              class="btn btn-sm btn-danger ms-2"
+              data-bs-toggle="modal"
+              data-bs-target="#deleteKeyModal"
+              data-key="{{ key }}"
+            >
+              Delete Key
+            </button>
+          </div>
         </div>
+        <div class="card-body">
+          {% if is_json_array %}
+          <div class="view-mode-controls">
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-primary active"
+                id="tableViewBtn"
+              >
+                Hiển thị dạng bảng
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-primary"
+                id="jsonViewBtn"
+              >
+                Hiển thị dạng JSON
+              </button>
+            </div>
+          </div>
+
+          <div id="jsonTableView" class="mb-4">
+            <h5>JSON Table View</h5>
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered json-table">
+                <thead>
+                  <tr id="jsonTableHeader">
+                    <!-- Headers will be filled by JavaScript -->
+                  </tr>
+                </thead>
+                <tbody id="jsonTableBody">
+                  <!-- Rows will be filled by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="jsonRawView" class="mb-4" style="display: none">
+            <h5>JSON Raw View</h5>
+            <pre>{{ raw_data }}</pre>
+          </div>
+
+          {% else %}
+          <div id="dataDisplay">
+            {% if data_type == "string" %}
+            <div class="mb-3">
+              <pre id="rawData">{{ raw_data }}</pre>
+            </div>
+            <div id="jsonDataContainer" class="table-responsive"></div>
+            {% elif data_type == "hash" %}
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for field, value in hash_data.items() %}
+                  <tr>
+                    <td>{{ field }}</td>
+                    <td>{{ value }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% elif data_type == "list" %}
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered">
+                <thead>
+                  <tr>
+                    <th>Index</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for i, item in enumerate(list_data) %}
+                  <tr>
+                    <td>{{ i }}</td>
+                    <td>{{ item }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% elif data_type == "set" %}
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered">
+                <thead>
+                  <tr>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in set_data %}
+                  <tr>
+                    <td>{{ item }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% elif data_type == "zset" %}
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for member, score in zset_data.items() %}
+                  <tr>
+                    <td>{{ member }}</td>
+                    <td>{{ score }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+              Unsupported data type: {{ data_type }}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %} {% if not is_json_array %}
+          <div class="mt-3">
+            <button class="btn btn-sm btn-outline-secondary" id="toggleRawJson">
+              Hiển thị/Ẩn dữ liệu gốc
+            </button>
+            <div class="mt-2" id="rawJsonContainer" style="display: none">
+              <pre id="rawJson">{{ raw_data }}</pre>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+          <a href="/" class="btn btn-primary">Quay lại</a>
+        </div>
+      </div>
     </div>
 
     <!-- Delete Key Modal -->
-    <div class="modal fade" id="deleteKeyModal" tabindex="-1" aria-labelledby="deleteKeyModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteKeyModalLabel">Xác nhận xóa key</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Bạn có chắc chắn muốn xóa key <strong>{{ key }}</strong>?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <form action="/delete/{{ key }}" method="POST">
-                        <button type="submit" class="btn btn-danger">Xóa</button>
-                    </form>
-                </div>
-            </div>
+    <div
+      class="modal fade"
+      id="deleteKeyModal"
+      tabindex="-1"
+      aria-labelledby="deleteKeyModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteKeyModalLabel">
+              Xác nhận xóa key
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            Bạn có chắc chắn muốn xóa key <strong>{{ key }}</strong>?
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Hủy
+            </button>
+            <form action="/delete/{{ key }}" method="POST">
+              <button type="submit" class="btn btn-danger">Xóa</button>
+            </form>
+          </div>
         </div>
-    </div>
-
-    <!-- Delete Item Modal -->
-    <div class="modal fade" id="deleteItemModal" tabindex="-1" aria-labelledby="deleteItemModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteItemModalLabel">Xác nhận xóa item</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Bạn có chắc chắn muốn xóa item này?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <form id="deleteItemForm" action="/delete_item/{{ key }}" method="POST">
-                        <input type="hidden" id="itemIndex" name="index">
-                        <input type="hidden" id="itemValue" name="value">
-                        <input type="hidden" id="itemField" name="field">
-                        <button type="submit" class="btn btn-danger">Xóa</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        $(document).ready(function(){
-            // Delete item modal
-            $('#deleteItemModal').on('show.bs.modal', function (event) {
-                var button = $(event.relatedTarget);
-                var index = button.data('index');
-                var value = button.data('value');
-                var field = button.data('field');
-                
-                var form = $('#deleteItemForm');
-                
-                if (index !== undefined) {
-                    $('#itemIndex').val(index);
-                }
-                
-                if (value !== undefined) {
-                    $('#itemValue').val(value);
-                }
-                
-                if (field !== undefined) {
-                    $('#itemField').val(field);
-                }
-            });
+      $(document).ready(function () {
+        // Toggle raw JSON display
+        $("#toggleRawJson").click(function () {
+          $("#rawJsonContainer").toggle();
         });
+
+        // Toggle between table and JSON view
+        $("#tableViewBtn").click(function() {
+          $(this).addClass("active").removeClass("btn-outline-primary").addClass("btn-primary");
+          $("#jsonViewBtn").removeClass("active").removeClass("btn-primary").addClass("btn-outline-primary");
+          $("#jsonTableView").show();
+          $("#jsonRawView").hide();
+        });
+
+        $("#jsonViewBtn").click(function() {
+          $(this).addClass("active").removeClass("btn-outline-primary").addClass("btn-primary");
+          $("#tableViewBtn").removeClass("active").removeClass("btn-primary").addClass("btn-outline-primary");
+          $("#jsonTableView").hide();
+          $("#jsonRawView").show();
+        });
+
+        {% if is_json_array %}
+        // Generate JSON table
+        const jsonData = {{ json_data|tojson }};
+        generateJsonTable(jsonData);
+        {% endif %}
+
+        function generateJsonTable(data) {
+          if (!Array.isArray(data) || data.length === 0) {
+            return;
+          }
+
+          // Get all possible columns from all objects
+          const allColumns = new Set();
+          data.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              Object.keys(item).forEach(key => allColumns.add(key));
+            }
+          });
+
+          // Create table headers
+          const headerRow = document.getElementById('jsonTableHeader');
+          headerRow.innerHTML = '';
+
+          // Add row number column
+          const rowNumHeader = document.createElement('th');
+          rowNumHeader.textContent = '#';
+          rowNumHeader.style.width = '50px';
+          headerRow.appendChild(rowNumHeader);
+
+          // Add all other columns
+          allColumns.forEach(column => {
+            const th = document.createElement('th');
+            th.textContent = column;
+            headerRow.appendChild(th);
+          });
+
+          // Create table rows
+          const tableBody = document.getElementById('jsonTableBody');
+          tableBody.innerHTML = '';
+
+          data.forEach((item, index) => {
+            const row = document.createElement('tr');
+
+            // Add row number
+            const rowNumCell = document.createElement('td');
+            rowNumCell.textContent = index + 1;
+            row.appendChild(rowNumCell);
+
+            // Add each column
+            allColumns.forEach(column => {
+              const cell = document.createElement('td');
+
+              if (item && column in item) {
+                const value = item[column];
+
+                if (value === null) {
+                  cell.textContent = '';
+                } else if (typeof value === 'object') {
+                  // For nested objects/arrays
+                  cell.textContent = JSON.stringify(value);
+                  cell.classList.add('nested-json');
+                } else {
+                  cell.textContent = value;
+                }
+              } else {
+                cell.textContent = '';
+              }
+
+              row.appendChild(cell);
+            });
+
+            tableBody.appendChild(row);
+          });
+        }
+      });
     </script>
-</body>
+  </body>
 </html>
