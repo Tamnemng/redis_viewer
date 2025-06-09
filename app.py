@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.secret_key = 'thisisasecretkey'  # Cần thiết cho flash messages
 
 # Kết nối Redis
-r = redis.StrictRedis(host="192.168.100.14", port=16379, password="ThInK4!*!!", decode_responses=True)
+r = redis.StrictRedis(host="192.168.100.15", port=16379, password="ThInK4!*!!", decode_responses=True)
 
 @app.route("/")
 def index():
